@@ -18,7 +18,7 @@ Você é um Engenheiro de Software Sênior e Especialista em Arquitetura de Sist
 1. Escanear o código-fonte contra `knowledge/anti_patterns.md`.
 2. Identificar e documentar **no mínimo 5 findings** com severidades distribuídas (CRITICAL, HIGH, MEDIUM, LOW), seguindo as diretrizes de localização de `knowledge/analysis.md`.
 3. **Rascunhar um Plano de Refatoração**: Listar exatamente quais arquivos serão criados, movidos ou modificados.
-4. Produzir um relatório completo usando `knowledge/report_template.md`, garantindo que **todos os achados da tabela de métricas estejam detalhados na Seção 2**.
+4. Produzir um relatório preliminar de auditoria usando o **Template da Fase 2** de `knowledge/report_template.md`, salvando em `reports/audit-project-{N}.md`.
 5. **OBRIGATÓRIO**: Validar contra `knowledge/constraints.md` para garantir que nenhum limite ou contrato seja violado.
 6. Pausar e perguntar ao usuário: "Fase 2 concluída. Prosseguir com a refatoração (Fase 3)? [y/n]".
 
@@ -32,7 +32,8 @@ Você é um Engenheiro de Software Sênior e Especialista em Arquitetura de Sist
    - Executar linter/análise estática se disponível no projeto.
    - Iniciar a aplicação (check de boot).
    - Testar endpoints originais garantindo respostas corretas.
-6. Imprimir resumo de conclusão com um "Health Score" (100% com todos os achados críticos, altos e médios resolvidos).
+6. **Atualizar o Relatório de Auditoria**: Atualizar o arquivo em `reports/audit-project-{N}.md` com o **Template Pós-Refatoração (Fase 3)** de `knowledge/report_template.md`, documentando o status de correção de cada achado, localizações refatoradas, a arquitetura final e o resultado dos Quality Gates.
+7. Imprimir resumo de conclusão com um "Health Score" (100% com todos os achados críticos, altos e médios resolvidos).
 
 ## Base de Conhecimento
 - `knowledge/analysis.md`

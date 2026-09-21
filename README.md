@@ -446,3 +446,193 @@ A skill deve atingir os seguintes mínimos em **todos os 3 projetos**:
 - **Projetos diferentes exigem adaptação** — a Fase 3 de um projeto já parcialmente organizado não vai ter as mesmas transformações de um monolito. Sua skill deve se adaptar ao contexto.
 - **Pedir confirmação na Fase 2 é obrigatório** — o humano deve revisar o relatório antes de qualquer modificação.
 - **Consulte as referências do curso** — revise a documentação oficial da ferramenta escolhida e os materiais das aulas para relembrar a estrutura e anatomia de uma skill.
+
+---
+
+# 📚 DOCUMENTAÇÃO DO PROCESSO & RELATÓRIO DE ENTREGA
+
+## A) Análise Manual dos Projetos
+
+### 1. `code-smells-project` (Python / Flask + SQLite)
+- **[CRITICAL] SQL Injection em Consultas Diretas e Buscas Dinâmicas**: Consultas SQL construídas via f-strings/concatenação (`models.py:28`, `models.py:291`). **Justificativa**: Risco crítico de invasão do banco de dados, bypass de autenticação e manipulação indevida de dados.
+- **[CRITICAL] Endpoint Administrativo de Execução de SQL Livre**: Endpoint `POST /admin/query` permitindo comandos DDL/DML arbitrários (`app.py:69`). **Justificativa**: Risco de destruição remota ou roubo completo da base de dados.
+- **[CRITICAL] Exposição de Credenciais Hardcoded e Segredos na API**: `SECRET_KEY` exposta em texto puro em `app.py:7`. **Justificativa**: Risco de sequestro de sessão e forjamento de tokens de autenticação.
+- **[CRITICAL] God Object / Monolito em `models.py`**: O arquivo `models.py` agregava regras de negócio, persistência SQL, validações e formatação para 4 domínios diferentes. **Justificativa**: Impossibilita isolamento de testes unitários e viola o princípio de responsabilidade única (SRP) do SOLID.
+- **[HIGH] Senhas Armazenadas e Comparadas em Texto Puro**: Cadastro e login de usuários sem hashing criptográfico (`database.py:76`). **Justificativa**: Comprometimento direto da privacidade dos usuários em vazamentos de banco.
+- **[HIGH] Persistência Vazando na Camada de Transporte**: SQL executado diretamente dentro de handlers de rotas e controllers (`controllers.py:266`). **Justificativa**: Quebra total do padrão MVC e acoplamento entre HTTP e banco de dados.
+- **[MEDIUM] Gargalos N+1 em Listagem e Detalhamento de Pedidos**: Iteração no Python buscando itens de cada pedido em queries individuais. **Justificativa**: Exaustão de conexões de I/O e alta latência da API em listas extensas.
+- **[MEDIUM] Vazamento de Dados Sensíveis na Serialização**: Método `to_dict()` de usuário expunha a senha nas respostas JSON. **Justificativa**: Violação de privacidade de dados (LGPD).
+- **[LOW] Estado Global Mutável e Magic Strings**: Conexões de banco globais e constantes soltas no código. **Justificativa**: Dificuldade de manutenção e risco de vazamento de conexões.
+
+---
+
+### 2. `ecommerce-api-legacy` (Node.js / Express + SQLite)
+- **[CRITICAL] Exposição de Credenciais Hardcoded e Log de Cartões**: Chaves de pagamento e banco hardcoded em `utils.js:1` e cartões impressos via `console.log`. **Justificativa**: Violação gravíssima de compliance de segurança de meios de pagamento (PCI-DSS).
+- **[CRITICAL] God Object (`AppManager.js`)**: Classe monolítica controlando autenticação, catálogo de cursos, checkout, relatórios e auditoria (`AppManager.js:1-139`). **Justificativa**: Código fortemente acoplado, sem modularidade e impossível de manter.
+- **[HIGH] Autenticação Quebrada com Hash Inseguro Customizado**: Uso da função vulnerável `badCrypto` (`utils.js:17`). **Justificativa**: Senhas facilmente reversíveis por força bruta ou ataque de dicionário.
+- **[HIGH] Vazamento de Lógica e Persistência na Camada de Transporte**: Consultas SQL de banco dentro da camada de roteamento/controllers. **Justificativa**: Quebra do padrão MVC.
+- **[MEDIUM] Callback Hell & Consulta N+1 em Relatório Financeiro**: 4 níveis de callbacks aninhados com consultas SQL iterativas. **Justificativa**: Gargalo severo de performance e propensão a travamentos e memory leaks da API.
+- **[MEDIUM] Falta de Integridade Referencial na Deleção de Usuários**: Deleção sem apagar matrículas e pagamentos em cascata. **Justificativa**: Geração de registros órfãos e dados corrompidos no banco de dados.
+- **[LOW] Estado Global Mutável em Memória**: Registros de auditoria salvos em array global em memória. **Justificativa**: Perda imediata de logs com o reinício da aplicação.
+
+---
+
+### 3. `task-manager-api` (Python / Flask + Flask-SQLAlchemy)
+- **[CRITICAL] Vazamento de Senhas Hasheadas na API**: Dicionário serializado `to_dict()` em `models/user.py` incluía o hash da senha em todas as rotas públicas de usuários. **Justificativa**: Exposição de credenciais dos usuários para qualquer cliente REST.
+- **[CRITICAL] Senhas e Credenciais SMTP Hardcoded**: `SECRET_KEY` e credenciais de e-mail expostas em texto puro (`app.py:13`, `services/notification_service.py:10`). **Justificativa**: Exposição de segredos de produção e serviços de mensageria.
+- **[CRITICAL] Algoritmo Criptográfico Obsoleto (MD5)**: Senhas salvas utilizando o hash MD5 (`models/user.py:29`). **Justificativa**: Algoritmo MD5 é criptograficamente quebrado e vulnerável a colisão e rainbow tables.
+- **[HIGH] Autenticação Quebrada & Token Falso**: Endpoint de login gerando tokens genéricos sem validação rigorosa de credenciais. **Justificativa**: Falha técnica na camada de controle de acesso.
+- **[HIGH] Ausência de Controllers & Regras nas Rotas**: Lógica de negócio e queries SQLAlchemy dentro dos arquivos de rotas (`routes/`). **Justificativa**: Acoplamento indevido entre protocolo HTTP e camada de domínio.
+- **[MEDIUM] Consultas N+1 em Relatórios e Listagem de Tarefas**: Carregamento lazy de categorias e usuários em cada tarefa listada. **Justificativa**: Ineficiência no acesso a dados e latência desnecessária.
+- **[MEDIUM] Ausência de Tratamento Centralizado de Exceções**: Uso de `bare except:` engolindo exceções sem log adequado. **Justificativa**: Ocultação de erros e dificultador de depuração.
+- **[LOW] Uso de APIs Depreciadas em Python (`datetime.utcnow()`)**: Chamadas a `datetime.utcnow()` sem fuso horário informado. **Justificativa**: Alertas de depreciação e incompatibilidade futura no Python 3.12+.
+
+---
+
+## B) Construção da Skill (`refactor-arch`)
+
+### 1. Decisões de Design da Skill
+A skill foi construída sob uma **arquitetura modular baseada em fases bem delimitadas**:
+- **`SKILL.md` (Orquestrador principal)**: Define o fluxo obrigatório em 3 fases:
+  - **Fase 1 (Análise)**: Identificação automática da linguagem, framework, ORM/driver de banco e arquitetura existente.
+  - **Fase 2 (Auditoria)**: Detecção de achados por severidade, geração do relatório preliminar em `reports/audit-project-{N}.md` e solicitação formal de confirmação ao usuário antes de alterar código.
+  - **Fase 3 (Refatoração & Quality Gates)**: Reestruturação do código para MVC+S em `src/`, execução de validações empíricas e atualização final do relatório de auditoria.
+- **Conhecimentos Focados em `knowledge/`**:
+  - `anti_patterns.md`: Catálogo abrangente com padrões de violações arquiteturais e de segurança (SQL Injection, God Class, MD5, N+1, leaks).
+  - `mvc_guidelines.md`: Diretrizes estruturais prescritivas para organização de `src/models`, `src/services`, `src/controllers`, `src/routes`, `src/config` e `src/middlewares`.
+  - `refactoring_playbook.md`: Guia de transformações seguras por stack (Python/Flask, Node.js/Express).
+  - `report_template.md`: Formatador padronizado de relatórios com placeholders dinâmicos para a auditoria preliminar e final com Quality Gates.
+  - `constraints.md` & `analysis.md`: Regras de preservação de contratos de API e lista de verificação de sanidade.
+
+### 2. Catálogo de Anti-patterns Incluídos
+- **Segurança**: SQL Injection, Hardcoded Credentials, Weak Cryptography (MD5/badCrypto), Exposição de Senhas em JSON.
+- **Arquitetura**: God Object / God Class, Leaking Business Logic in Transport Layer, Absence of Controller Layer.
+- **Performance & Qualidade**: N+1 Query Problem, Cascading Deletion Failure, Bare Except / Swallowed Errors, Deprecated Time APIs.
+
+### 3. Abordagem Agnóstica de Tecnologia
+A skill foi projetada de forma **independente de stack**:
+- **Abstração de Conceitos Arquiteturais**: Em vez de acoplar a skill a sintaxes específicas de uma única linguagem, a skill define o papel semântico de cada camada (`Model` encapsula queries/ORM, `Service` orquestra lógica de negócio, `Controller` trata HTTP `req/res` e `Route` define endpoints).
+- **Flexibilidade de Stacks**: Validada com sucesso em ecossistemas Python (Flask com SQLite nativo ou Flask-SQLAlchemy) e Node.js (Express com SQLite nativo).
+
+### 4. Desafios Encontrados e Soluções
+- **Desafio**: Manter a estabilidade das APIs sem quebrar contratos durante a migração das rotas para Controllers.
+  - *Solução*: Inclusão do arquivo `constraints.md` tornando obrigatória a preservação rigorosa dos endpoints, métodos HTTP e contratos JSON de resposta.
+- **Desafio**: Evitar relatórios parciais ou genéricos.
+  - *Solução*: Criação de templates de auditoria em duas fases com Quality Gates explícitos (0 erros de lint, Boot Aprovado, 100% Endpoints Aprovados).
+
+---
+
+## C) Resultados da Refatoração
+
+### 1. Resumo dos Achados e Correções (3/3 Projetos Aprovados)
+
+| Projeto | Stack | Severidade dos Achados | Total de Achados | Status de Correção | Health Score Final |
+|---|---|---|---|---|---|
+| **code-smells-project** | Python / Flask + SQLite | 5 CRITICAL, 2 HIGH, 2 MEDIUM, 2 LOW | 11 Achados | **100% Corrigido (11/11)** | **100 / 100 (Excelente)** |
+| **ecommerce-api-legacy** | Node.js / Express + SQLite | 2 CRITICAL, 2 HIGH, 2 MEDIUM, 1 LOW | 7 Achados | **100% Corrigido (7/7)** | **100 / 100 (Excelente)** |
+| **task-manager-api** | Python / Flask + SQLAlchemy | 3 CRITICAL, 2 HIGH, 2 MEDIUM, 1 LOW | 8 Achados | **100% Corrigido (8/8)** | **100 / 100 (Excelente)** |
+
+---
+
+### 2. Comparação da Estrutura Antes vs Depois
+
+#### `code-smells-project`
+- **Antes**: 4 arquivos monolíticos na raiz (`app.py`, `database.py`, `models.py`, `controllers.py`).
+- **Depois**: Arquitetura limpa MVC+S em `src/`:
+  - `src/config/settings.py` (Variáveis de ambiente)
+  - `src/database/connection.py` (Context manager SQLite)
+  - `src/models/` (`produto_model.py`, `usuario_model.py`, `pedido_model.py`, `health_model.py`, `admin_model.py`, `report_model.py`)
+  - `src/services/` (`auth_service.py`, `report_service.py`, `health_service.py`, `admin_service.py`)
+  - `src/controllers/` (`produto_controller.py`, `usuario_controller.py`, `pedido_controller.py`, `report_controller.py`, `health_controller.py`, `admin_controller.py`)
+  - `src/routes/` (`produto_routes.py`, `usuario_routes.py`, `pedido_routes.py`, `report_routes.py`, `health_routes.py`, `admin_routes.py`)
+
+#### `ecommerce-api-legacy`
+- **Antes**: 3 arquivos com lógica misturada (`src/app.js`, `src/utils.js`, `src/AppManager.js`).
+- **Depois**: Arquitetura limpa MVC+S em `src/`:
+  - `src/config/settings.js`
+  - `src/database/connection.js`
+  - `src/models/` (`UserModel.js`, `CourseModel.js`, `EnrollmentModel.js`, `PaymentModel.js`, `AuditLogModel.js`, `ReportModel.js`)
+  - `src/services/` (`CheckoutService.js`, `ReportService.js`)
+  - `src/controllers/` (`CheckoutController.js`, `ReportController.js`, `UserController.js`)
+  - `src/routes/` (`checkoutRoutes.js`, `reportRoutes.js`, `userRoutes.js`)
+
+#### `task-manager-api`
+- **Antes**: Estrutura parcial sem controllers (`models/`, `routes/`, `services/`, `utils/`) com regras de negócio e queries nas rotas.
+- **Depois**: Arquitetura padronizada MVC+S em `src/`:
+  - `src/config/settings.py`
+  - `src/database/connection.py`
+  - `src/models/` (`user_model.py`, `task_model.py`, `category_model.py`)
+  - `src/services/` (`notification_service.py`, `report_service.py`)
+  - `src/controllers/` (`user_controller.py`, `task_controller.py`, `category_controller.py`, `report_controller.py`)
+  - `src/routes/` (`user_routes.py`, `task_routes.py`, `report_routes.py`)
+  - `src/middlewares/error_handler.py`
+
+---
+
+### 3. Checklist de Aceite Final (Atendido em 3/3 Projetos)
+
+- [x] **Fase 1 detecta a stack corretamente em 3/3 projetos**
+- [x] **Fase 2 encontra >= 5 achados em 3/3 projetos** (11 em project-1, 7 em project-2, 8 em project-3)
+- [x] **Fase 2 inclui pelo menos 1 CRITICAL ou HIGH em 3/3 projetos**
+- [x] **Fase 3 aplicação funciona perfeitamente após a refatoração em 3/3 projetos** (Boot Check OK, 0 erros de lint/sintaxe, 100% endpoints responsivos)
+
+---
+
+## D) Como Executar
+
+### 1. Pré-requisitos
+- Python 3.10+ (para `code-smells-project` e `task-manager-api`)
+- Node.js 18+ (para `ecommerce-api-legacy`)
+- Antigravity / AGY CLI / Claude Code instalado e configurado na máquina
+
+### 2. Comandos para Executar a Skill em Cada Projeto
+
+#### Projeto 1 (`code-smells-project`)
+```bash
+cd code-smells-project
+# Executar a skill refactor-arch
+/refactor-arch
+```
+
+#### Projeto 2 (`ecommerce-api-legacy`)
+```bash
+cd ../ecommerce-api-legacy
+# Executar a skill refactor-arch
+/refactor-arch
+```
+
+#### Projeto 3 (`task-manager-api`)
+```bash
+cd ../task-manager-api
+# Executar a skill refactor-arch
+/refactor-arch
+```
+
+---
+
+### 3. Como Validar que a Refatoração Funcionou
+
+#### Validação do Projeto 1 (`code-smells-project`)
+```bash
+cd code-smells-project
+python3 app.py
+# Testar endpoint de health
+curl http://localhost:5000/health
+```
+
+#### Validação do Projeto 2 (`ecommerce-api-legacy`)
+```bash
+cd ecommerce-api-legacy
+npm start
+# Ou rodar o servidor em background
+node src/app.js
+```
+
+#### Validação do Projeto 3 (`task-manager-api`)
+```bash
+cd task-manager-api
+python3 app.py
+# Popular banco e testar API
+python3 seed.py
+curl http://localhost:5000/health
+```

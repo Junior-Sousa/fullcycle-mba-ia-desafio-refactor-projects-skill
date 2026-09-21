@@ -1,3 +1,3 @@
-from flask_sqlalchemy import SQLAlchemy
+from src.database.connection import db
 
-db = SQLAlchemy()
+__all__ = ['db']
