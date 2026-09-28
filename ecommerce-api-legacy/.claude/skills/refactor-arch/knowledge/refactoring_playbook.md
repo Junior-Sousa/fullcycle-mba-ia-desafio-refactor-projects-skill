@@ -85,26 +85,25 @@ class CheckoutController {
 ---
 
 ## 3. Centralização Segura de Configurações e Segredos
-**Problema**: Chaves de API, senhas de banco e segredos de sessão (`SECRET_KEY`, `JWT_SECRET`) declarados como literais de string no código-fonte.  
-**Solução**: Extrair para módulo centralizado (`config/settings`) alimentado exclusivamente por variáveis de ambiente (`os.environ` / `process.env`) com fallbacks seguros para desenvolvimento.
+**Problema**: Chaves de API, senhas de banco e segredos de sessão (`SECRET_KEY`, `JWT_SECRET`) declarados como literais de string no código-fonte, ou passados com fallbacks no `os.getenv` / `process.env` que repete o segredo vazado do código original.  
+**Solução**: Extrair para módulo centralizado (`config/settings`) alimentado exclusivamente por variáveis de ambiente (`os.environ` / `process.env`). Caso seja fornecido um valor de fallback para ambiente de desenvolvimento local, utilizar obrigatoriamente um valor genérico (ex: `"dev-insecure-secret-key-change-in-production"`), NUNCA reutilizando a string do segredo original vazado.
 
 ### Exemplo (Python & Node.js)
-#### ❌ Antes (Credenciais Hardcoded)
+#### ❌ Antes (Credenciais Hardcoded ou Fallback com Segredo Vazado)
 ```python
-# app.py
-app = Flask(__name__)
-app.config["SECRET_KEY"] = "minha-chave-super-secreta-123456"
-DATABASE_URL = "sqlite:///loja.db"
+# app.py ou settings.py - INSEGURO
+SECRET_KEY = os.getenv("SECRET_KEY", "super-secret-key-123")  # Reutiliza o segredo vazado como fallback
 ```
 
-#### ✅ Depois (Configuração Desacoplada)
+#### ✅ Depois (Configuração Desacoplada e Fallback Genérico Seguro)
 ```python
 # src/config/settings.py
 import os
 
 class Settings:
-    SECRET_KEY = os.getenv("SECRET_KEY", "dev-fallback-key-change-in-prod")
-    DATABASE_PATH = os.getenv("DATABASE_PATH", "loja.db")
+    # O fallback de dev NUNCA reutiliza o segredo vazado
+    SECRET_KEY = os.getenv("SECRET_KEY", "dev-insecure-secret-key-change-in-production")
+    DATABASE_PATH = os.getenv("DATABASE_PATH", "app.db")
     DEBUG = os.getenv("FLASK_ENV") != "production"
 
 # src/app.py
@@ -220,29 +219,37 @@ class AdminController:
 
 ---
 
-## 6. Criptografia Segura de Senhas (Substituição de MD5 / Plaintext)
-**Problema**: Senhas de usuários salvas em texto puro ou hasheadas com algoritmos criptograficamente quebrados (MD5, SHA-1, ou Base64 caseiro).  
-**Solução**: Empregar algoritmos de derivação de chave com salt automático (PBKDF2, BCrypt ou Argon2).
+## 6. Criptografia Segura de Senhas e Emissão de Tokens Assinados (HMAC-SHA256 / JWT)
+**Problema**: Senhas salvas em texto puro ou algoritmos fracos; ou emissão de tokens de autenticação fictícios não assinados no login (ex: `f"jwt-token-{user.id}"` ou `'fake-jwt-token-1'`).  
+**Solução**: Empregar algoritmos de derivação de chave com salt único por usuário (`PBKDF2:sha256`) e gerar tokens de autenticação assinados digitalmente via HMAC-SHA256 (HS256) com claims estruturadas de sessão (`user_id`, `iat`, `exp`) e a `SECRET_KEY`.
 
-### Exemplo (Python: Werkzeug / Node.js: Crypto/Bcrypt)
-#### ❌ Antes (MD5 ou Texto Puro)
+### Exemplo (Python: Password Hash & Signed JWT Token)
+#### ❌ Antes (Senha em texto puro e token fictício não assinado)
 ```python
-# models/user.py
-def set_password(self, pwd):
-    self.password = hashlib.md5(pwd.encode()).hexdigest() # Vulnerável a colisões e rainbow tables
+# controllers/auth.py
+@app.route("/login", methods=["POST"])
+def login():
+    # INSEGURO: token retornado como string simples sem assinatura
+    return jsonify({"token": f"jwt-token-{user.id}"})
 ```
 
-#### ✅ Depois (PBKDF2 com Salt)
+#### ✅ Depois (PBKDF2 Hash + Token Assinado Criptograficamente com HMAC-SHA256)
 ```python
-# models/user.py
-from werkzeug.security import generate_password_hash, check_password_hash
+import hmac, hashlib, base64, json, time
+from src.config.settings import Settings
 
-class User(db.Model):
-    def set_password(self, pwd):
-        self.password = generate_password_hash(pwd, method="pbkdf2:sha256")
-
-    def check_password(self, pwd):
-        return check_password_hash(self.password, pwd)
+def generate_signed_jwt(user_id: int) -> str:
+    header = {"alg": "HS256", "typ": "JWT"}
+    payload = {"user_id": user_id, "iat": int(time.time()), "exp": int(time.time()) + 86400}
+    
+    header_b64 = base64.urlsafe_b64encode(json.dumps(header).encode()).decode().rstrip("=")
+    payload_b64 = base64.urlsafe_b64encode(json.dumps(payload).encode()).decode().rstrip("=")
+    
+    signature_input = f"{header_b64}.{payload_b64}".encode()
+    signature = hmac.new(Settings.SECRET_KEY.encode(), signature_input, hashlib.sha256).digest()
+    signature_b64 = base64.urlsafe_b64encode(signature).decode().rstrip("=")
+    
+    return f"{header_b64}.{payload_b64}.{signature_b64}"
 ```
 
 ---

@@ -20,16 +20,16 @@ Catálogo exaustivo de anti-padrões arquiteturais, de segurança e de qualidade
 - **Recomendação**: Substituir por endpoints administrativos especializados e parametrizados (ex: `/admin/reset-database`). Se mantido para inspeção de leitura, validar e restringir categoricamente *antes* da execução: allowlist de `SELECT`, rejeitar encadeamento de múltiplos comandos (`;`), e bloquear palavras-chave destrutivas via tokenização.
 
 ### [CRITICAL] Exposição de Credenciais e Segredos Hardcoded
-- **Sinais de Detecção**: Chaves de API (`sk_live_...`, `pk_live_...`), segredos de criptografia (`SECRET_KEY`), senhas de banco ou tokens de pagamento gravados como literais de string no código-fonte ou expostos em respostas de endpoints internos (ex: endpoint `/health` retornando `secret_key`).
-- **Exemplos**: `app.config['SECRET_KEY'] = 'minha-chave-super-secreta-123'`, `const DB_PASS = "admin123"`, `paymentGatewayKey: "pk_live_1234567890abcdef"`.
+- **Sinais de Detecção**: Chaves de API (`sk_live_...`, `pk_live_...`), segredos de criptografia (`SECRET_KEY`), senhas de banco ou tokens de pagamento gravados como literais de string no código-fonte, expostos em respostas de endpoints internos (ex: `/health` retornando `secret_key`), ou quando o fallback de `os.getenv` / `process.env` reutiliza a mesma string do segredo exposto no código original (ex: `os.getenv("SECRET_KEY", "super-secret-key-123")`).
+- **Exemplos**: `app.config['SECRET_KEY'] = 'minha-chave-super-secreta-123'`, `SECRET_KEY = os.getenv('SECRET_KEY', 'super-secret-key-123')`, `const DB_PASS = "admin123"`.
 - **Impacto no Negócio**: Comprometimento direto da infraestrutura, facilitação de ataques de personificação e violação severa de normas de conformidade (LGPD, GDPR, PCI-DSS).
-- **Recomendação**: Mover todas as credenciais para variáveis de ambiente via módulo de configuração centralizado (`config/settings.py` ou `config/index.js`). Nunca incluir segredos em payloads de resposta HTTP.
+- **Recomendação**: Mover todas as credenciais para variáveis de ambiente via módulo de configuração centralizado (`config/settings.py` ou `config/index.js`). O valor de fallback (`default`) para ambiente de desenvolvimento NUNCA deve repetir a string do segredo vazado original — devendo utilizar obrigatoriamente um valor genérico indicativo (ex: `os.getenv("SECRET_KEY", "dev-insecure-secret-key-change-in-production")`). Nunca incluir segredos em payloads de resposta HTTP.
 
 ### [HIGH] Autenticação Quebrada & Algoritmos Criptográficos Obsoletos
-- **Sinais de Detecção**: Armazenamento de senhas em texto puro; funções de cifra customizadas reversíveis (ex: loops de Base64 concatenado); uso de algoritmos criptograficamente obsoletos e vulneráveis a colisões como `hashlib.md5()`, `hashlib.sha1()` ou `crypto.createHash('sha1')`.
-- **Exemplos**: `hashlib.md5(pwd.encode()).hexdigest()` para armazenar senha; comparação de senha na query SQL sem hash.
-- **Impacto no Negócio**: Se a base de dados for acessada, todas as credenciais de usuários e administradores são imediatamente expostas ou quebradas com rainbow tables.
-- **Recomendação**: Substituir por funções robustas de derivação de chave com salt único por usuário (PBKDF2 via `werkzeug.security`, `bcrypt` ou `argon2`). Para Node.js, usar `crypto.createHash('sha256')` com `randomBytes(16)` para o salt, ou biblioteca `bcrypt`.
+- **Sinais de Detecção**: Armazenamento de senhas em texto puro; funções de cifra customizadas reversíveis (ex: loops de Base64 concatenado); uso de algoritmos criptograficamente obsoletos e vulneráveis a colisões como `hashlib.md5()`, `hashlib.sha1()`; ou retorno de tokens de autenticação fictícios não assinados no login (ex: `f"jwt-token-{user.id}"` ou `'fake-jwt-token-1'`).
+- **Exemplos**: `hashlib.md5(pwd.encode()).hexdigest()` para armazenar senha; `'token': f'jwt-token-{user.id}'` sem assinatura HMAC digital.
+- **Impacto no Negócio**: Se a base de dados for acessada, todas as credenciais são expostas; tokens não assinados permitem falsificação imediata de identidade de qualquer usuário.
+- **Recomendação**: Substituir por funções robustas de derivação de chave com salt único por usuário (PBKDF2 via `werkzeug.security`, `bcrypt` ou `argon2`). Para emissão de tokens no login, gerar obrigatoriamente um token JWT assinado criptograficamente com HMAC-SHA256 (HS256) utilizando a `SECRET_KEY` da aplicação, contendo claims estruturadas (`user_id`, `iat`, `exp`).
 
 ### [MEDIUM] Vazamento de Dados Sensíveis na Serialização
 - **Sinais de Detecção**: Métodos de serialização (`to_dict()`, `toJSON()`) que incluem campos confidenciais (`password`, `hash`, `auth_token`, `secret`) no payload de resposta de APIs públicas ou semi-públicas.

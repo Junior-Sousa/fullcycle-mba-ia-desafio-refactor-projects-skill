@@ -2,6 +2,7 @@ from flask import request, jsonify
 from src.database.connection import db
 from src.models.user_model import User
 from src.models.task_model import Task
+from src.utils.token_utils import generate_signed_token
 import re
 
 class UserController:
@@ -154,8 +155,10 @@ class UserController:
         if not user.active:
             return jsonify({'error': 'Usuário inativo'}), 403
 
+        token = generate_signed_token(user.id)
+
         return jsonify({
             'message': 'Login realizado com sucesso',
             'user': user.to_dict(),
-            'token': f'jwt-token-{user.id}'
+            'token': token
         }), 200

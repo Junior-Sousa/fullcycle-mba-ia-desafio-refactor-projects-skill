@@ -13,4 +13,5 @@ Diretrizes de segurança e limites operacionais para a skill de refatoração.
 
 ## 3. Segurança (Redlines)
 - **SENHAS**: Nunca imprimir hashes de senhas em logs ou no relatório de auditoria.
-- **SEGREDOS**: Nunca mover segredos de um arquivo hardcoded para outro arquivo hardcoded; eles devem ir para variáveis de ambiente ou arquivos `.env` protegidos pelo `.gitignore`.
+- **SEGREDOS E FALLBACKS**: Nunca mover segredos para variáveis de ambiente mantendo a chave secreta legada/vazada como valor padrão (`default`) de `os.getenv` / `process.env`. O valor de fallback para ambiente de desenvolvimento deve ser estritamente genérico (ex: `"dev-insecure-secret-key-change-in-production"`).
+- **TOKENS DE AUTENTICAÇÃO**: Nunca retornar tokens fictícios, estáticos ou não assinados na autenticação (ex: `"jwt-token-1"`, `"fake-token"`). O token de resposta deve ser assinado criptograficamente via HMAC-SHA256 (HS256) utilizando a `SECRET_KEY` da aplicação e contendo claims estruturadas (`user_id`, `iat`, `exp`).
