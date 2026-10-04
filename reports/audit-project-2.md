@@ -31,13 +31,13 @@ Após a execução da refatoração e migração estrutural para a arquitetura M
 - **Localização Original**: `src/AppManager.js:1-139`
 - **Localização Refatorada**: `src/models/`, `src/services/`, `src/controllers/`, `src/routes/`, `src/app.js`
 - **Status**: **CORRIGIDO & VALIDADO**
-- **Análise & Solução**: A classe monolítica `AppManager` foi desestruturada e arquivada (`AppManager.js.legacy`). A aplicação foi reconstruída seguindo o padrão MVC limpo, com responsabilidades únicas por arquivo.
+- **Análise & Solução**: A classe monolítica `AppManager` foi desestruturada e totalmente removida do repositório (via `git rm`), não deixando cópias `*.legacy`. A aplicação foi reconstruída seguindo o padrão MVC limpo, com responsabilidades únicas por arquivo.
 
 ### [HIGH] Autenticação Quebrada & Algoritmos Criptográficos Obsoletos
 - **Localização Original**: `src/utils.js:17-23` e `src/AppManager.js:68`
 - **Localização Refatorada**: `src/models/UserModel.js:5-8`, `src/database/connection.js:56`
 - **Status**: **CORRIGIDO & VALIDADO**
-- **Análise & Solução**: A função vulnerável `badCrypto` foi descontinuada e arquivada (`utils.js.legacy`). O armazenamento de senhas agora utiliza hashing criptográfico seguro via `crypto.createHash('sha256')` nativo do Node.js.
+- **Análise & Solução**: A função vulnerável `badCrypto` foi descontinuada e o arquivo `utils.js` foi totalmente removido do repositório (via `git rm`), sem deixar cópias `*.legacy`. O armazenamento de senhas agora utiliza hashing criptográfico seguro via `crypto.createHash('sha256')` nativo do Node.js.
 
 ### [HIGH] Vazamento de Lógica de Negócio e Persistência na Camada de Transporte
 - **Localização Original**: `src/AppManager.js:28-138`

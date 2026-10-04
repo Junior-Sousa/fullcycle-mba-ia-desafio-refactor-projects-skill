@@ -27,13 +27,20 @@ Você é um Engenheiro de Software Sênior e Especialista em Arquitetura de Sist
 2. Criar a nova estrutura de diretórios MVC conforme `knowledge/mvc_guidelines.md`.
 3. Aplicar padrões de transformação de `knowledge/refactoring_playbook.md`.
 4. Corrigir todos os achados identificados na auditoria, priorizando por severidade.
-5. **Quality Gates (Validação)**:
+5. **Desativar o Código Legado Substituído** (`knowledge/refactoring_playbook.md`, padrão 14 e `knowledge/constraints.md`):
+   - Listar todos os arquivos/diretórios originais cujo comportamento foi reimplementado na nova estrutura (ex: `AppManager.js`, `utils.js`, `models.py`, pastas `routes/`, `services/` fora de `src/`).
+   - Confirmar via busca de `import`/`require` que nenhum módulo ativo (entry point, seeds, scripts) depende deles.
+   - Retirá-los do caminho original com `git rm` (ou `git mv` quando o arquivo for reaproveitado). **Nunca** deixar o original intacto ao lado do novo código nem criar cópias `*.legacy`/`*.old`/`*.bak` — o histórico do Git é o arquivo.
+6. **Quality Gates (Validação)**:
    - Verificar erros de sintaxe nos novos arquivos.
    - Executar linter/análise estática se disponível no projeto.
    - Iniciar a aplicação (check de boot).
    - Testar endpoints originais garantindo respostas corretas.
-6. **Atualizar o Relatório de Auditoria**: Atualizar o arquivo em `reports/audit-project-{N}.md` com o **Template Pós-Refatoração (Fase 3)** de `knowledge/report_template.md`, documentando o status de correção de cada achado, localizações refatoradas, a arquitetura final e o resultado dos Quality Gates.
-7. Imprimir resumo de conclusão com um "Health Score" (100% com todos os achados críticos, altos e médios resolvidos).
+   - **Varredura de segredos residuais**: buscar no working tree (ex: `git grep`) cada literal de segredo citado nos findings da Fase 2 (chaves, senhas, tokens). Resultado esperado: zero ocorrências fora da pasta da skill e dos relatórios. Fallbacks de configuração também não podem repetir esses literais.
+   - **Varredura de legado vivo**: nenhum arquivo listado no passo 5 pode continuar existindo no caminho original nem como cópia arquivada.
+   - Um achado só pode ser marcado como **CORRIGIDO** no relatório se todos os gates acima passarem para ele.
+7. **Atualizar o Relatório de Auditoria**: Atualizar o arquivo em `reports/audit-project-{N}.md` com o **Template Pós-Refatoração (Fase 3)** de `knowledge/report_template.md`, documentando o status de correção de cada achado, localizações refatoradas, os arquivos legados removidos, a arquitetura final e o resultado dos Quality Gates.
+8. Imprimir resumo de conclusão com um "Health Score" (100% com todos os achados críticos, altos e médios resolvidos).
 
 ## Base de Conhecimento
 - `knowledge/analysis.md`

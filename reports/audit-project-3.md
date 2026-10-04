@@ -31,7 +31,7 @@ Após a execução da refatoração e migração para a arquitetura MVC+S (Model
 - **Localização Original**: `app.py:13`, `services/notification_service.py:10`
 - **Localização Refatorada**: `src/config/settings.py`, `src/services/notification_service.py:6-10`
 - **Status**: **CORRIGIDO & VALIDADO**
-- **Análise & Solução**: Todas as configurações e segredos (`SECRET_KEY`, `SQLALCHEMY_DATABASE_URI`, credenciais SMTP) foram isolados em `src/config/settings.py` e são carregados dinamicamente via variáveis de ambiente (`os.getenv`). O valor de fallback de desenvolvimento (`'dev-insecure-secret-key-change-in-production'`) foi ajustado para **nunca repetir o segredo vazado original (`'super-secret-key-123'`)**.
+- **Análise & Solução**: Todas as configurações e segredos (`SECRET_KEY`, `SQLALCHEMY_DATABASE_URI`, credenciais SMTP) foram isolados em `src/config/settings.py` e são carregados dinamicamente via variáveis de ambiente (`os.getenv`). O valor de fallback de desenvolvimento (`'dev-insecure-secret-key-change-in-production'`) foi ajustado para **nunca repetir o segredo vazado original (`'super-secret-key-123'`)**. O arquivo legado `services/notification_service.py` e `app.py` original foram totalmente removidos (via `git rm`) conforme diretrizes, sem deixar cópias vivas ou `*.legacy`.
 
 ### [CRITICAL] Algoritmo Criptográfico Depreciado e Vulnerável (MD5) para Senhas
 - **Localização Original**: `models/user.py:29,32`

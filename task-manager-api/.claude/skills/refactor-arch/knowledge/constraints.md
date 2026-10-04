@@ -7,7 +7,7 @@ Diretrizes de segurança e limites operacionais para a skill de refatoração.
 - **NÃO REMOVER**: Documentação técnica existente (docstrings, JSDoc, comentários de lógica complexa).
 
 ## 2. Limites de Modificação
-- **ARQUIVAMENTO**: Sempre renomear arquivos legados (ex: `.legacy` ou `.old`) em vez de deletá-los imediatamente.
+- **DESATIVAÇÃO DO LEGADO (OBRIGATÓRIO)**: Todo arquivo ou diretório legado cujo comportamento foi substituído pela nova estrutura DEVE ser retirado do caminho original ao final da Fase 3 (`git rm` / `git mv` em repositórios versionados). É PROIBIDO deixar uma "cópia viva" (o arquivo original intacto ao lado do novo código) ou cópias arquivadas no working tree (`*.legacy`, `*.old`, `*.bak`, pastas `legacy/`) — o histórico do Git é o arquivo de referência. A remoção só é feita após confirmar, via busca de imports/requires, que nenhum módulo ativo depende do legado.
 - **DEPENDÊNCIAS**: Não instalar novas bibliotecas globais sem verificar o gerenciador de pacotes local. Preferir bibliotecas já presentes no projeto.
 - **MIGRAÇÃO DE DADOS**: Não alterar o esquema do banco de dados (tabelas/colunas) de forma destrutiva. Migrações devem ser apenas aditivas ou de normalização básica.
 
